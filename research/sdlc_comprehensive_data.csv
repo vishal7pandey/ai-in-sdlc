@@ -1,0 +1,83 @@
+Phase,Task,Artifact
+Phase 1: Planning,Define project goals and objectives,Project Charter
+,Identify stakeholders and their roles,Feasibility Study Report
+,"Conduct feasibility study (technical, operational, financial)",Project Plan/Roadmap
+,Perform risk analysis and mitigation planning,Risk Assessment Document
+,Define project scope and boundaries,Resource Allocation Plan
+,Create project roadmap with milestones and timelines,Business Case
+,Define roles and responsibilities,Stakeholder Analysis Document
+,Establish success criteria and KPIs,Work Breakdown Structure (WBS)
+,Allocate resources and budget,
+Phase 2: Requirements Analysis,Gather business requirements from stakeholders,Business Requirements Document (BRD)
+,Conduct requirement elaboration sessions,Software Requirements Specification (SRS)
+,Analyze functional and non-functional requirements,Functional Requirements Document (FRD/FRS)
+,Perform technical specifications analysis,Non-Functional Requirements Document
+,Perform operational specifications analysis,Use Cases and User Stories
+,Validate requirements feasibility,Requirements Traceability Matrix (RTM)
+,Document user stories and use cases,Process Flow Diagrams
+,Create requirement traceability matrix,Data Flow Diagrams (DFD)
+,Review and approve requirements with stakeholders,Legacy User Manual (if available)
+Phase 3: Design,Create system architecture design,High-Level Design (HLD) Document
+,Design database schema and ER diagrams,Low-Level Design (LLD) Document
+,Create UI/UX wireframes and mockups,Design Document Specification (DDS)
+,Design API specifications and endpoints,System Architecture Diagram
+,Define module specifications and interactions,"Database Design Document (ER Diagrams, Schema)"
+,Create high-level design (HLD),UI/UX Wireframes and Mockups
+,Create low-level design (LLD),Prototypes
+,Design security implementation,API Specifications
+,Define coding standards and conventions,Interface Specifications
+,Design algorithm specifications,Technical Specifications Document
+,,Class Diagrams
+,,Sequence Diagrams
+,,Data Dictionary
+,,Network Topology Diagram
+Phase 4: Development/Implementation,Write and implement code based on design,Source Code
+,Integrate software components and libraries,Code Documentation
+,Conduct unit testing on individual modules,Unit Test Cases
+,Perform code reviews,Unit Test Results
+,Document code for future reference,Build Scripts
+,Follow coding standards and guidelines,Database Scripts (DDL/DML)
+,Implement algorithms and business logic,Integration Scripts
+,Develop database scripts,Code Review Reports
+,Version control management,Version Control Logs
+,Conduct peer code reviews,API Implementation
+Phase 5: Testing,Create test plan and test strategy,Test Plan Document
+,Design test cases and test scenarios,Test Strategy Document
+,Set up test environment,Test Cases and Test Scenarios
+,Execute unit testing,Test Scripts
+,Perform integration testing,Test Data
+,Conduct system testing,Requirements Traceability Matrix (RTM)
+,Execute User Acceptance Testing (UAT),Test Execution Reports
+,Perform regression testing,Defect/Bug Reports
+,Conduct performance and load testing,Test Summary Report
+,Execute security testing,UAT Sign-off Document
+,Log and track defects,Performance Test Results
+,Verify bug fixes and retest,Security Test Results
+,Create test summary report,Test Closure Report
+Phase 6: Deployment,Develop deployment plan,Deployment Plan
+,Prepare production environment,Deployment Checklist
+,Configure servers and infrastructure,Release Notes
+,Perform database migration,Installation Guide
+,Install system in production,Configuration Guide
+,Execute training plan for users,User Training Materials
+,Communicate deployment to users,User Manual/Documentation
+,Perform data entry or conversion,Administrator Guide
+,Conduct post-deployment testing,Operations Manual
+,Perform beta/pilot testing,Data Migration Scripts
+,Execute rollout strategy,Rollback Plan
+,Monitor initial deployment,Post-Deployment Review Report
+,Document deployment experience,Acceptance Plan and Sign-off
+Phase 7: Maintenance,Monitor system performance,Maintenance Plan
+,Identify and fix bugs/defects,Bug Reports and Fix Documentation
+,Perform root cause analysis,Change Request Log
+,Handle user support requests,Incident Reports
+,Implement software updates and patches,Root Cause Analysis Reports
+,Conduct preventive maintenance,Performance Monitoring Reports
+,Perform adaptive maintenance for new environments,Updated User Documentation
+,Execute perfective maintenance for enhancements,Updated Technical Documentation
+,Analyze user feedback,Patch Release Notes
+,Plan and implement feature upgrades,Upgrade Documentation
+,Update documentation,Support Tickets/Logs
+,Monitor error rates and logs,Knowledge Base Articles
+,Manage change requests,System Health Reports
+,,Continuous Improvement Reports

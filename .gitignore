@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Environments
+.env
+.env.local
+.env.*.local
+.venv/
+venv/
+env/
+ENV/
+
+# uv cache
+.uv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing & coverage
+.pytest_cache/
+.tox/
+.coverage*
+htmlcov/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pre-commit
+.pre-commit-framework-dir/
+
+# Logs
+*.log
+logs/
+
+# Data volumes
+postgres-data/
+redis-data/
+chromadb-data/
+
+# Misc
+.idea/
