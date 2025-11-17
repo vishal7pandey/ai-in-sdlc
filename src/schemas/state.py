@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .chat import Message
     from .requirement import Requirement
+else:  # pragma: no cover - runtime aliasing for Pydantic
+    Message = import_module("src.schemas.chat").Message
+    Requirement = import_module("src.schemas.requirement").Requirement
 
 ApprovalStatus = Literal["pending", "approved", "revision_requested"]
 
@@ -45,8 +49,8 @@ class GraphState(BaseModel):
     iterations: int = 0
     error_count: int = 0
 
-    checkpoint_id: str | None = None
-    parent_checkpoint_id: str | None = None
+    checkpoint_ref: str | None = None
+    parent_checkpoint_ref: str | None = None
     correlation_id: str | None = None
     conversation_context: dict[str, Any] | None = None
     ambiguity_assessment: dict[str, Any] | None = None

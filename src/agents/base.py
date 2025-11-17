@@ -17,6 +17,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from src.config import settings
 from src.utils.logging import get_logger, log_with_context
 
 if TYPE_CHECKING:
@@ -55,12 +56,18 @@ class BaseAgent(ABC):
         self.max_tokens = max_tokens
         self.logger = get_logger(f"agent.{self.name}")
 
+        # Prefer explicit API key when provided, otherwise fall back to the
+        # configured default from application settings. This avoids
+        # construction-time errors in environments where OPENAI_API_KEY is
+        # not set (e.g. tests that stub out agent behavior).
+        api_key = openai_api_key or settings.OPENAI_API_KEY
+
         self.llm = self._wrap_llm(
             ChatOpenAI(
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                api_key=openai_api_key,
+                api_key=api_key,
                 timeout=timeout,
             )
         )
