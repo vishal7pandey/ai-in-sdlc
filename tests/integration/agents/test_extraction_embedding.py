@@ -55,7 +55,7 @@ class StubLLM:
 @pytest.mark.asyncio
 async def test_extraction_agent_stores_embeddings_for_semantic_search() -> None:
     agent = ExtractionAgent(openai_api_key="test")
-    agent.llm = StubLLM()  # type: ignore[assignment]
+    agent.llm = StubLLM()
 
     # Use a dedicated in-memory vector store so we can query it directly.
     vector_store = VectorStoreService()

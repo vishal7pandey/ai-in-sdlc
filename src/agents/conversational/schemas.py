@@ -11,7 +11,7 @@ Sentiment = Literal["positive", "neutral", "negative"]
 
 
 class ConversationalResponse(BaseModel):
-    message: str = Field(..., min_length=50, max_length=600)
+    message: str = Field(..., min_length=1)
     next_action: NextAction
     clarifying_questions: list[str] | None = None
     confidence: float = Field(..., ge=0.0, le=1.0)

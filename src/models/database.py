@@ -22,12 +22,20 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import declarative_base, relationship
-
-Base = declarative_base()
+from sqlalchemy.orm import DeclarativeBase, relationship
 
 
-class SessionModel(AsyncAttrs, Base):
+class Base(AsyncAttrs, DeclarativeBase):
+    """Base class for all SQLAlchemy models.
+
+    Using DeclarativeBase keeps mypy happy when referring to Base as a type
+    and avoids "Base is not valid as a type" errors.
+    """
+
+    pass
+
+
+class SessionModel(Base):
     __tablename__ = "sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -64,7 +72,7 @@ class SessionModel(AsyncAttrs, Base):
     )
 
 
-class ChatMessageModel(AsyncAttrs, Base):
+class ChatMessageModel(Base):
     __tablename__ = "chat_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -84,7 +92,7 @@ class ChatMessageModel(AsyncAttrs, Base):
     )
 
 
-class RequirementModel(AsyncAttrs, Base):
+class RequirementModel(Base):
     __tablename__ = "requirements"
 
     id = Column(String(50), primary_key=True)
@@ -136,7 +144,7 @@ class RequirementModel(AsyncAttrs, Base):
     )
 
 
-class RDDocumentModel(AsyncAttrs, Base):
+class RDDocumentModel(Base):
     __tablename__ = "rd_documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -161,7 +169,7 @@ class RDDocumentModel(AsyncAttrs, Base):
     )
 
 
-class RDEventModel(AsyncAttrs, Base):
+class RDEventModel(Base):
     __tablename__ = "rd_events"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -204,7 +212,7 @@ class AuditLogModel(AsyncAttrs, Base):
     )
 
 
-class LangGraphCheckpointModel(AsyncAttrs, Base):
+class LangGraphCheckpointModel(Base):
     __tablename__ = "langgraph_checkpoints"
 
     thread_id = Column(String(255), primary_key=True)
@@ -225,7 +233,7 @@ class LangGraphCheckpointModel(AsyncAttrs, Base):
     )
 
 
-class LangGraphCheckpointWriteModel(AsyncAttrs, Base):
+class LangGraphCheckpointWriteModel(Base):
     __tablename__ = "langgraph_checkpoint_writes"
 
     thread_id = Column(String(255), primary_key=True)

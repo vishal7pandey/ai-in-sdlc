@@ -7,7 +7,7 @@ from typing import Any
 try:
     from langchain.output_parsers import PydanticOutputParser
 except ModuleNotFoundError:  # pragma: no cover - compatibility shim
-    from langchain_core.output_parsers import PydanticOutputParser  # type: ignore
+    from langchain_core.output_parsers import PydanticOutputParser
 
 from src.agents.base import AgentResult, BaseAgent
 from src.schemas import GraphState, Requirement
@@ -155,7 +155,12 @@ class ExtractionAgent(BaseAgent):
         if ambiguity["is_ambiguous"]:
             payload["confidence"] = min(payload.get("confidence", 1.0), 0.75)
 
-        return Requirement(**payload), ambiguity.get("suggestions", [])
+        raw_suggestions = ambiguity.get("suggestions") or []
+        suggestions: list[str] = (
+            [str(s) for s in raw_suggestions] if isinstance(raw_suggestions, list) else []
+        )
+
+        return Requirement(**payload), suggestions
 
     async def _store_embeddings(self, requirements: list[Requirement], session_id: str) -> None:
         """Store embeddings for extracted requirements to support semantic search."""

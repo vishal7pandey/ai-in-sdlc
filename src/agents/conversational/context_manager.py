@@ -85,7 +85,7 @@ class ContextManager:
         return sorted(found)
 
     def _collect_features(self, messages: list[Any]) -> list[str]:
-        features = []
+        features: list[str] = []
         for msg in messages:
             tokens = [t.strip(".,?!") for t in msg.content.split()]
             features.extend(token for token in tokens if len(token) > 4)

@@ -9,7 +9,7 @@ from typing import Any
 try:
     from langchain.output_parsers import PydanticOutputParser
 except ModuleNotFoundError:  # pragma: no cover - compatibility shim
-    from langchain_core.output_parsers import PydanticOutputParser  # type: ignore
+    from langchain_core.output_parsers import PydanticOutputParser
 
 from src.agents.base import AgentResult, BaseAgent
 from src.schemas import GraphState, Message

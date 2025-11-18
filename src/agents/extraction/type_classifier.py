@@ -84,7 +84,8 @@ class TypeClassifier:
             for indicator in indicators:
                 if indicator.lower() in haystack:
                     scores[rtype] += 1
-        best = max(scores, key=scores.get)
-        if scores[best] == 0:
+
+        best_rtype, best_score = max(scores.items(), key=lambda item: item[1])
+        if best_score == 0:
             return RequirementType.FUNCTIONAL
-        return best
+        return best_rtype

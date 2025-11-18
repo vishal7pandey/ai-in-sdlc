@@ -54,7 +54,7 @@ sentiment: positive
 """,
     ]
     agent = ConversationalAgent(openai_api_key="test")
-    agent.llm = StubLLM(responses)  # type: ignore[assignment]
+    agent.llm = StubLLM(responses)
 
     state = GraphState(
         session_id="sess-test",

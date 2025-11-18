@@ -75,7 +75,7 @@ def _state() -> GraphState:
 
 async def main() -> None:
     agent = ExtractionAgent(openai_api_key="test")
-    agent.llm = StubLLM()  # type: ignore[assignment]
+    agent.llm = StubLLM()
 
     state = await agent.invoke(_state())
 

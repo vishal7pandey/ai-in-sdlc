@@ -49,7 +49,7 @@ def _state() -> GraphState:
 
 async def main() -> None:
     agent = ConversationalAgent(openai_api_key="test")
-    agent.llm = StubLLM()  # type: ignore[assignment]
+    agent.llm = StubLLM()
     state = await agent.invoke(_state())
     print("\nFinal confidence:", state.confidence)
     print("Last next action:", state.last_next_action)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from redis.asyncio import Redis
+from redis.asyncio import Redis  # type: ignore[import-untyped]
 
 from src.config import settings
 

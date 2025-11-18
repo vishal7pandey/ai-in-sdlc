@@ -14,6 +14,7 @@ from src.orchestrator.checkpointer import DualCheckpointer
 from src.orchestrator.nodes import (
     conversational_node,
     extraction_node,
+    human_review_node,
     inference_node,
     review_node,
     synthesis_node,
@@ -34,6 +35,7 @@ def build_graph() -> StateGraph:
     workflow.add_node("inference", inference_node)
     workflow.add_node("validation", validation_node)
     workflow.add_node("synthesis", synthesis_node)
+    workflow.add_node("human_review", human_review_node)
     workflow.add_node("review", review_node)
 
     # Entry point
@@ -69,8 +71,9 @@ def build_graph() -> StateGraph:
     # Inference loops back to validation
     workflow.add_edge("inference", "validation")
 
-    # Synthesis goes to review
-    workflow.add_edge("synthesis", "review")
+    # Synthesis goes to human_review interrupt node, then review
+    workflow.add_edge("synthesis", "human_review")
+    workflow.add_edge("human_review", "review")
 
     # Review decides whether to end or return to conversation
     workflow.add_conditional_edges(
@@ -84,9 +87,14 @@ def build_graph() -> StateGraph:
     )
 
     # Compile with dual-layer checkpointing (Redis + Postgres) so that
-    # orchestrator state is persisted across node executions.
+    # orchestrator state is persisted across node executions. Configure an
+    # interrupt *before* the human_review node so the graph can pause for
+    # human-in-the-loop decisions.
     checkpointer = DualCheckpointer()
-    graph = workflow.compile(checkpointer=checkpointer)
+    graph = workflow.compile(
+        checkpointer=checkpointer,
+        interrupt_before=["human_review"],
+    )
     return graph
 
 

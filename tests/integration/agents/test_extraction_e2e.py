@@ -61,7 +61,7 @@ async def test_end_to_end_extraction_persistence_and_search() -> None:
     await init_database()
 
     agent = ExtractionAgent(openai_api_key="test")
-    agent.llm = StubLLM()  # type: ignore[assignment]
+    agent.llm = StubLLM()
 
     # Use a dedicated vector store so we can inspect embeddings
     vector_store = VectorStoreService()

@@ -132,6 +132,28 @@ async def validation_node(state: GraphState) -> GraphState:
     return state
 
 
+async def human_review_node(state: GraphState) -> GraphState:
+    """Human review node used as an interrupt point in the workflow.
+
+    The graph is configured to interrupt *before* this node executes, so
+    reaching it indicates that a human decision is required before the
+    workflow can proceed.
+    """
+
+    correlation_id = state.correlation_id or "unknown"
+    log_with_context(
+        logger,
+        "info",
+        "Human review interrupt reached",
+        agent="human_review",
+        session_id=state.session_id,
+        approval_status=state.approval_status,
+        correlation_id=correlation_id,
+    )
+
+    return state
+
+
 async def synthesis_node(state: GraphState) -> GraphState:
     """Placeholder synthesis node that creates a simple RD draft.
 

@@ -39,7 +39,7 @@ async def test_checkpoint_saved_and_loaded_round_trip() -> None:
     # Patch conversational agent execute to avoid LLM usage
     original_execute = orchestrator_nodes._conversational_agent.execute
 
-    async def fake_execute(state):  # type: ignore[override]
+    async def fake_execute(state):
         msg = Message(
             id="msg-stub",
             role="assistant",
@@ -57,7 +57,7 @@ async def test_checkpoint_saved_and_loaded_round_trip() -> None:
             },
         }
 
-    orchestrator_nodes._conversational_agent.execute = fake_execute  # type: ignore[assignment]
+    orchestrator_nodes._conversational_agent.execute = fake_execute  # type: ignore[method-assign]
 
     try:
         session_id = "orch-sess-1"
@@ -121,4 +121,4 @@ async def test_checkpoint_saved_and_loaded_round_trip() -> None:
 
     finally:
         # Restore original behavior to avoid side effects on other tests
-        orchestrator_nodes._conversational_agent.execute = original_execute  # type: ignore[assignment]
+        orchestrator_nodes._conversational_agent.execute = original_execute  # type: ignore[method-assign]

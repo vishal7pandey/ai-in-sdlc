@@ -56,7 +56,7 @@ class StubLLM:
 @pytest.mark.asyncio
 async def test_extraction_agent_flow_enriches_state() -> None:
     agent = ExtractionAgent(openai_api_key="test")
-    agent.llm = StubLLM(RESPONSE)  # type: ignore[assignment]
+    agent.llm = StubLLM(RESPONSE)
 
     state = GraphState(
         session_id="sess-002",

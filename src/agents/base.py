@@ -184,13 +184,13 @@ class BaseAgent(ABC):
     def _wrap_llm(self, llm: ChatOpenAI) -> ChatOpenAI:
         """Wrap LLM invoke call with retry handler."""
 
-        original_invoke = llm._generate  # type: ignore[attr-defined]
+        original_invoke = llm._generate
 
         @self.llm_retry()
         def safe_generate(*args, **kwargs):
             return original_invoke(*args, **kwargs)
 
-        llm._generate = safe_generate  # type: ignore[assignment]
+        llm._generate = safe_generate
         return llm
 
 

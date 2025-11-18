@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import ClassVar, TypedDict
+
+
+class AmbiguityResult(TypedDict):
+    is_ambiguous: bool
+    ambiguous_terms: list[str]
+    ambiguity_score: float
+    suggestions: list[str]
 
 
 class AmbiguityDetector:
@@ -36,7 +43,7 @@ class AmbiguityDetector:
         ],
     }
 
-    def detect(self, text: str) -> dict[str, list[str] | float | bool]:
+    def detect(self, text: str) -> AmbiguityResult:
         lowered = text.lower()
         hits: list[str] = []
         for terms in self.AMBIGUOUS_TERMS.values():

@@ -39,7 +39,7 @@ extractedTopics:
   - performance
 sentiment: neutral
 """
-    agent.llm = StubLLM(stub_response)  # type: ignore[assignment]
+    agent.llm = StubLLM(stub_response)
 
     base_state = GraphState(
         session_id="sess-1",
@@ -75,7 +75,7 @@ extractedTopics:
   - authentication
 sentiment: positive
 """
-    agent.llm = StubLLM(stub_response)  # type: ignore[assignment]
+    agent.llm = StubLLM(stub_response)
 
     base_state = GraphState(
         session_id="sess-2",

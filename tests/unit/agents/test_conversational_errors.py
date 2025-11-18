@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
 
 from src.agents.conversational.agent import ConversationalAgent
+from src.agents.conversational.response_formatter import ResponseFormatter
 from src.schemas import GraphState, Message
+
+if TYPE_CHECKING:
+    from src.agents.conversational.schemas import ConversationalResponse
 
 
 class ExplodingLLM:
@@ -32,7 +37,7 @@ def _base_state() -> GraphState:
 @pytest.mark.asyncio
 async def test_conversational_agent_fallback_on_llm_error() -> None:
     agent = ConversationalAgent(openai_api_key="test")
-    agent.llm = ExplodingLLM()  # type: ignore[assignment]
+    agent.llm = ExplodingLLM()
 
     result = await agent.execute(_base_state())
     assert result["state_updates"]["confidence"] == 0.3
@@ -40,8 +45,10 @@ async def test_conversational_agent_fallback_on_llm_error() -> None:
     assert result["state_updates"]["pending_clarifications"] == []
 
 
-class BadFormatter:
-    def parse_and_validate(self, _content: str):  # pragma: no cover - stub
+class BadFormatter(ResponseFormatter):
+    def parse_and_validate(
+        self, _content: str
+    ) -> ConversationalResponse:  # pragma: no cover - stub
         raise ValueError("parse error")
 
 
@@ -56,8 +63,8 @@ class StubLLM:
 @pytest.mark.asyncio
 async def test_conversational_agent_fallback_on_parse_error() -> None:
     agent = ConversationalAgent(openai_api_key="test")
-    agent.llm = StubLLM()  # type: ignore[assignment]
-    agent.response_formatter = BadFormatter()  # type: ignore[assignment]
+    agent.llm = StubLLM()
+    agent.response_formatter = BadFormatter()
 
     result = await agent.execute(_base_state())
 

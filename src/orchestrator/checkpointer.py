@@ -86,9 +86,15 @@ class DualCheckpointer(BaseCheckpointSaver):
         thread_id = config["configurable"]["thread_id"]
         checkpoint_id = checkpoint["id"]
 
+        # Serialize checkpoint so that any Pydantic models (e.g. GraphState,
+        # Message) are stored as plain JSON-serializable dicts. This keeps
+        # Redis and Postgres representations consistent and avoids stringified
+        # models in chat_history on reload.
+        serialized_checkpoint = self._serialize_checkpoint(checkpoint)
+
         # Save to Redis (fast path)
         redis = get_redis()
-        payload = json.dumps(checkpoint, default=str)
+        payload = json.dumps(serialized_checkpoint)
         await redis.set(self._redis_key(thread_id, checkpoint_id), payload, ex=self.ttl_seconds)
         await redis.set(self._latest_redis_key(thread_id), payload, ex=self.ttl_seconds)
 
@@ -187,7 +193,7 @@ class DualCheckpointer(BaseCheckpointSaver):
 
         async def _empty() -> AsyncIterator[CheckpointTuple]:  # pragma: no cover - stub
             if False:
-                yield
+                yield  # type: ignore[unreachable]
 
         return _empty()
 

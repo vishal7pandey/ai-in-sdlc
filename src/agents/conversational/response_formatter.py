@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Any
+from typing import Any, cast
 
 from pydantic import ValidationError
 
@@ -14,7 +15,7 @@ class ResponseFormatter:
     """Parse LLM responses into structured ConversationalResponse objects."""
 
     def parse_and_validate(self, raw_output: str) -> ConversationalResponse:
-        """Parse raw LLM output formatted as simple key:value blocks."""
+        """Parse raw LLM output into a ConversationalResponse model."""
 
         sections = self._extract_sections(raw_output)
         try:
@@ -23,12 +24,67 @@ class ResponseFormatter:
             raise ValueError(f"Invalid conversational response: {exc}") from exc
 
     def _extract_sections(self, raw_output: str) -> dict[str, Any]:
+        # First try to handle JSON-style outputs where the model returns a
+        # structured object like {"conversational_agent_response": "..."}.
+        stripped = raw_output.strip()
+        if stripped.startswith("{") and stripped.endswith("}"):
+            try:
+                obj = json.loads(stripped)
+            except json.JSONDecodeError:
+                obj = None
+            if isinstance(obj, dict):
+                # Prefer a nested response.text field when present, which is
+                # how the current prompts structure conversational answers.
+                nested_response = obj.get("response")
+                message: str | None = None
+                if isinstance(nested_response, dict):
+                    message = nested_response.get("text") or nested_response.get("message")
+
+                # Fall back to common top-level keys.
+                if not message:
+                    message = obj.get("conversational_agent_response") or obj.get("message")
+
+                # If the model returned a document object, surface a short
+                # human-readable summary instead of the raw JSON.
+                if not message and isinstance(obj.get("document"), dict):
+                    doc = obj["document"]
+                    title = doc.get("title") or "Generated requirements document"
+                    sections = doc.get("sections") or []
+                    section_titles: list[str] = [
+                        cast("str", s.get("title"))
+                        for s in sections
+                        if isinstance(s, dict) and isinstance(s.get("title"), str)
+                    ]
+                    summary_lines = [title]
+                    if section_titles:
+                        summary_lines.append("")
+                        summary_lines.append("Sections: " + ", ".join(section_titles))
+                    message = "\n".join(summary_lines)
+
+                if not message:
+                    message = stripped
+
+                return {
+                    "message": str(message).strip(),
+                    "next_action": obj.get("next_action")
+                    or obj.get("nextAction")
+                    or "continue_eliciting",
+                    "clarifying_questions": obj.get("clarifying_questions")
+                    or obj.get("clarifyingQuestions"),
+                    "confidence": float(obj.get("confidence", 0.7)),
+                    "extracted_topics": obj.get("extracted_topics")
+                    or obj.get("extractedTopics")
+                    or [],
+                    "sentiment": obj.get("sentiment", "neutral"),
+                }
+
+        # Fallback: parse simple key:value block format.
         pattern = re.compile(r"^(\w+):\s*(.*)$", re.MULTILINE)
         data: dict[str, Any] = {}
         current_key: str | None = None
         lines: list[str] = []
 
-        for line in raw_output.strip().splitlines():
+        for line in stripped.splitlines():
             match = pattern.match(line)
             if match:
                 if current_key and lines:
@@ -41,8 +97,16 @@ class ResponseFormatter:
         if current_key and lines:
             data[current_key] = "\n".join(lines).strip()
 
+        # Prefer the structured `response:` block, but if the model didn't
+        # follow the expected format, fall back to the raw output so the
+        # user still sees a meaningful assistant message instead of the
+        # generic hiccup fallback.
+        message = (data.get("response") or "").strip()
+        if not message and stripped:
+            message = stripped
+
         return {
-            "message": data.get("response", ""),
+            "message": message,
             "next_action": data.get("nextAction", "continue_eliciting"),
             "clarifying_questions": self._split_list(data.get("clarifyingQuestions")),
             "confidence": float(data.get("confidence", 0.7)),
