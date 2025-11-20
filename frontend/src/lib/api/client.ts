@@ -1,4 +1,4 @@
-import type { SessionDetailResponse, OrchestratorTurnResponse } from '../../types/api'
+import type { SessionDetailResponse, OrchestratorTurnResponse, RDResponse } from '../../types/api'
 
 export const API_BASE = '/api/v1'
 
@@ -39,4 +39,20 @@ export async function sendSessionMessage(
     method: 'POST',
     body: JSON.stringify({ message, project_name: projectName ?? undefined }),
   })
+}
+
+export async function generateRD(sessionId: string): Promise<RDResponse> {
+  return apiFetch<RDResponse>(`/rd/${sessionId}/generate`, {
+    method: 'POST',
+  })
+}
+
+export async function getRD(sessionId: string): Promise<RDResponse> {
+  return apiFetch<RDResponse>(`/rd/${sessionId}`)
+}
+
+export async function exportRD(
+  sessionId: string,
+): Promise<{ filename: string; content: string }> {
+  return apiFetch<{ filename: string; content: string }>(`/rd/${sessionId}/export`)
 }

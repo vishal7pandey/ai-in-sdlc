@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TCH003
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel
 
 if TYPE_CHECKING:  # pragma: no cover
+    from datetime import datetime
+
     from . import GraphState, Message
 else:  # pragma: no cover - runtime aliasing for Pydantic
+    datetime = import_module("datetime").datetime
     GraphState = import_module("src.schemas").GraphState
     Message = import_module("src.schemas").Message
 
@@ -73,3 +75,13 @@ class OrchestratorTurnResponse(BaseModel):
     status: Literal["ok", "interrupt"]
     interrupt_type: str | None = None
     state: GraphState
+
+
+class RDResponse(BaseModel):
+    """Response model for RD generation and retrieval endpoints."""
+
+    session_id: str
+    version: int
+    content: str
+    format: Literal["markdown", "json", "pdf"]
+    status: Literal["draft", "under_review", "approved"]

@@ -22,10 +22,16 @@ class ConversationalResponse(BaseModel):
     def validate_clarifications(
         self,
     ) -> ConversationalResponse:  # pragma: no cover - simple validation
-        if self.next_action == "clarify" and not self.clarifying_questions:
-            raise ValueError("clarifying_questions required when next_action is 'clarify'")
-        if self.next_action != "clarify" and self.clarifying_questions:
-            raise ValueError("clarifying_questions must be empty unless next_action is 'clarify'")
+        if self.next_action == "clarify":
+            # If we're in a clarification step but the model omitted questions,
+            # treat that as an empty list rather than an error.
+            if self.clarifying_questions is None:
+                self.clarifying_questions = []
+        else:
+            # For non-clarification actions, ignore any stray clarifying
+            # questions instead of failing validation.
+            if self.clarifying_questions:
+                self.clarifying_questions = None
         return self
 
 

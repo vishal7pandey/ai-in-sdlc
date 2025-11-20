@@ -59,10 +59,24 @@ class RequirementItem(BaseModel):
     @field_validator("source_refs")
     @classmethod
     def _validate_source_refs(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
         for ref in value:
-            if not ref.startswith("chat:turn:"):
-                raise ValueError(f"Invalid source reference: {ref}")
-        return value
+            # Accept the canonical "chat:turn:N" format as-is.
+            if ref.startswith("chat:turn:"):
+                normalized.append(ref)
+                continue
+
+            # Also accept shorthand like "chat:N" and normalize it to
+            # "chat:turn:N" so minor prompt drift doesn't break parsing.
+            if ref.startswith("chat:"):
+                suffix = ref.split(":", 1)[1]
+                if suffix.isdigit():
+                    normalized.append(f"chat:turn:{suffix}")
+                    continue
+
+            raise ValueError(f"Invalid source reference: {ref}")
+
+        return normalized
 
 
 # Backwards compatibility alias used throughout the codebase

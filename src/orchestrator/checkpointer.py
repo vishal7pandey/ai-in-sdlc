@@ -92,11 +92,17 @@ class DualCheckpointer(BaseCheckpointSaver):
         # models in chat_history on reload.
         serialized_checkpoint = self._serialize_checkpoint(checkpoint)
 
-        # Save to Redis (fast path)
-        redis = get_redis()
-        payload = json.dumps(serialized_checkpoint)
-        await redis.set(self._redis_key(thread_id, checkpoint_id), payload, ex=self.ttl_seconds)
-        await redis.set(self._latest_redis_key(thread_id), payload, ex=self.ttl_seconds)
+        # Save to Redis (fast path). If Redis is unavailable, continue with
+        # Postgres-only persistence; callers should still see a successful
+        # checkpoint write.
+        try:
+            redis = get_redis()
+            payload = json.dumps(serialized_checkpoint)
+            await redis.set(self._redis_key(thread_id, checkpoint_id), payload, ex=self.ttl_seconds)
+            await redis.set(self._latest_redis_key(thread_id), payload, ex=self.ttl_seconds)
+        except Exception:
+            # Best-effort cache; failures fall back to Postgres only.
+            pass
 
         # Save to Postgres (durable path)
         async with get_session() as session:
@@ -129,15 +135,21 @@ class DualCheckpointer(BaseCheckpointSaver):
         if thread_id is None:
             return None
 
-        redis = get_redis()
+        # Look in Redis first. If Redis is unavailable or the event loop is
+        # being torn down, treat this as a cache miss and fall back to
+        # Postgres.
+        try:
+            redis = get_redis()
 
-        # Look in Redis first
-        key = (
-            self._redis_key(thread_id, checkpoint_id)
-            if checkpoint_id is not None
-            else self._latest_redis_key(thread_id)
-        )
-        raw = await redis.get(key)
+            key = (
+                self._redis_key(thread_id, checkpoint_id)
+                if checkpoint_id is not None
+                else self._latest_redis_key(thread_id)
+            )
+            raw = await redis.get(key)
+        except Exception:
+            raw = None
+
         if raw:
             try:
                 checkpoint = json.loads(raw)
@@ -158,12 +170,20 @@ class DualCheckpointer(BaseCheckpointSaver):
             return None
 
         checkpoint = record.checkpoint
-        # Repopulate Redis for faster subsequent reads
-        payload = json.dumps(checkpoint, default=str)
-        await redis.set(
-            self._redis_key(thread_id, str(record.checkpoint_id)), payload, ex=self.ttl_seconds
-        )
-        await redis.set(self._latest_redis_key(thread_id), payload, ex=self.ttl_seconds)
+        # Repopulate Redis for faster subsequent reads. Ignore Redis errors so
+        # that Postgres remains the source of truth even if the cache layer is
+        # unavailable.
+        try:
+            redis = get_redis()
+            payload = json.dumps(checkpoint, default=str)
+            await redis.set(
+                self._redis_key(thread_id, str(record.checkpoint_id)),
+                payload,
+                ex=self.ttl_seconds,
+            )
+            await redis.set(self._latest_redis_key(thread_id), payload, ex=self.ttl_seconds)
+        except Exception:
+            pass
 
         return CheckpointTuple(
             config=config,

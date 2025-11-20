@@ -50,7 +50,7 @@ def test_decide_next_step_to_validation_when_requirements_present() -> None:
         actor="user",
         action="log in",
         acceptance_criteria=["User can log in with email and password"],
-        rationale="Test rationale",
+        rationale="This is a valid test rationale",
         source_refs=["chat:turn:0"],
     )
     state = _base_state().with_updates(requirements=[req], validation_issues=[])

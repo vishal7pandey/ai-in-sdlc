@@ -1,4 +1,7 @@
+import { useState } from 'react'
+
 import type { GraphState, Requirement } from '../../types/api'
+import { exportRD, generateRD } from '../../lib/api/client'
 
 interface RequirementsSidebarProps {
   sessionId: string
@@ -7,24 +10,45 @@ interface RequirementsSidebarProps {
 
 export function RequirementsSidebar({ sessionId, state }: RequirementsSidebarProps) {
   const requirements: Requirement[] = state?.requirements ?? []
-  const rdDraft = state?.rd_draft ?? null
+  const [rdContent, setRdContent] = useState<string | null>(state?.rd_draft ?? null)
 
-  const handleExport = () => {
-    if (!rdDraft) return
+  const handleGenerate = async () => {
+    if (!requirements.length) return
 
     try {
-      const blob = new Blob([rdDraft], { type: 'text/markdown' })
+      const rd = await generateRD(sessionId)
+      setRdContent(rd.content)
+    } catch (error) {
+      console.error('Failed to generate RD draft', error)
+    }
+  }
+
+  const handleExport = async () => {
+    if (!rdContent) return
+
+    const download = (filename: string, content: string) => {
+      const blob = new Blob([content], { type: 'text/markdown' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `requirements-${sessionId}.md`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       link.remove()
       URL.revokeObjectURL(url)
+    }
+
+    try {
+      const { filename, content } = await exportRD(sessionId)
+      download(filename, content)
     } catch (error) {
-      // Soft-fail; keep this in console only for now.
-      console.error('Failed to export RD markdown', error)
+      console.error('Failed to export RD via API, falling back to local draft', error)
+      try {
+        download(`requirements-${sessionId}.md`, rdContent)
+      } catch (fallbackError) {
+        // Soft-fail; keep this in console only for now.
+        console.error('Failed to export RD markdown', fallbackError)
+      }
     }
   }
 
@@ -91,19 +115,30 @@ export function RequirementsSidebar({ sessionId, state }: RequirementsSidebarPro
       <div className="border-t border-slate-800 p-3 h-40 flex flex-col bg-slate-950/95">
         <div className="flex items-center justify-between mb-2">
           <div className="font-semibold text-slate-300 text-xs">RD Preview</div>
-          {rdDraft && (
-            <button
-              type="button"
-              onClick={handleExport}
-              className="text-[11px] px-2 py-1 rounded border border-slate-700 text-slate-200 hover:bg-slate-800"
-            >
-              Export MD
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {requirements.length > 0 && (
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="text-[11px] px-2 py-1 rounded border border-slate-700 text-slate-200 hover:bg-slate-800"
+              >
+                Generate RD
+              </button>
+            )}
+            {rdContent && (
+              <button
+                type="button"
+                onClick={handleExport}
+                className="text-[11px] px-2 py-1 rounded border border-slate-700 text-slate-200 hover:bg-slate-800"
+              >
+                Export MD
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex-1 overflow-auto text-[11px] text-slate-400">
-          {rdDraft ? (
-            <pre className="whitespace-pre-wrap">{rdDraft}</pre>
+          {rdContent ? (
+            <pre className="whitespace-pre-wrap">{rdContent}</pre>
           ) : (
             <p className="text-slate-500">
               Once the orchestrator generates a Requirements Document draft, it will appear here.

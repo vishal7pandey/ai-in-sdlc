@@ -10,11 +10,13 @@ This keeps orchestration concerns separate from agent internals.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from src.agents.conversational.agent import ConversationalAgent
 from src.agents.extraction.agent import ExtractionAgent
+from src.agents.inference.agent import InferenceAgent
+from src.agents.synthesis.agent import SynthesisAgent
+from src.agents.validation.agent import ValidationAgent
 from src.utils.logging import get_logger, log_with_context
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
@@ -27,6 +29,9 @@ logger = get_logger(__name__)
 # does not repeatedly construct ChatOpenAI clients.
 _conversational_agent = ConversationalAgent()
 _extraction_agent = ExtractionAgent()
+_inference_agent = InferenceAgent()
+_validation_agent = ValidationAgent()
+_synthesis_agent = SynthesisAgent()
 
 
 async def conversational_node(state: GraphState) -> GraphState:
@@ -88,48 +93,75 @@ async def extraction_node(state: GraphState) -> GraphState:
 
 
 async def inference_node(state: GraphState) -> GraphState:
-    """Placeholder inference node.
+    """LangGraph node wrapper for the InferenceAgent.
 
-    Future stories can implement additional agents that infer implicit
-    requirements or derive higher-level specs. For now this node is a
-    pass-through that simply logs its execution.
+    Applies a small set of high-confidence, rule-based inference rules to
+    propose implicit requirements (e.g. security hardening around login
+    flows). Results are written into ``inferred_requirements`` on the
+    GraphState.
     """
 
     correlation_id = state.correlation_id or "unknown"
     log_with_context(
         logger,
         "info",
-        "Inference node executed (no-op)",
+        "Inference node started",
         agent="inference",
         session_id=state.session_id,
         turn=state.current_turn,
         correlation_id=correlation_id,
     )
 
-    # No changes yet; return state unchanged.
-    return state
+    new_state = await _inference_agent.invoke(state)
+
+    log_with_context(
+        logger,
+        "info",
+        "Inference node completed",
+        agent="inference",
+        session_id=new_state.session_id,
+        inferred_requirements=len(new_state.inferred_requirements),
+        confidence=new_state.confidence,
+        correlation_id=correlation_id,
+    )
+
+    return new_state
 
 
 async def validation_node(state: GraphState) -> GraphState:
-    """Placeholder validation node.
+    """LangGraph node wrapper for the ValidationAgent.
 
-    This will eventually host a validation/quality agent. For now it
-    simply logs and returns the state unchanged so that routing logic can
-    still be exercised in tests.
+    Runs lightweight structural/content validation over all requirements
+    and inferred requirements, updates per-requirement confidence, and
+    populates ``validation_issues`` and the overall session confidence on
+    the GraphState.
     """
 
     correlation_id = state.correlation_id or "unknown"
     log_with_context(
         logger,
         "info",
-        "Validation node executed (no-op)",
+        "Validation node started",
         agent="validation",
         session_id=state.session_id,
         turn=state.current_turn,
         correlation_id=correlation_id,
     )
 
-    return state
+    new_state = await _validation_agent.invoke(state)
+
+    log_with_context(
+        logger,
+        "info",
+        "Validation node completed",
+        agent="validation",
+        session_id=new_state.session_id,
+        issues=len(new_state.validation_issues),
+        confidence=new_state.confidence,
+        correlation_id=correlation_id,
+    )
+
+    return new_state
 
 
 async def human_review_node(state: GraphState) -> GraphState:
@@ -155,50 +187,75 @@ async def human_review_node(state: GraphState) -> GraphState:
 
 
 async def synthesis_node(state: GraphState) -> GraphState:
-    """Placeholder synthesis node that creates a simple RD draft.
-
-    A future story can replace this with a proper RD-generation agent.
-    """
+    """Synthesis node that generates an RD draft using SynthesisAgent."""
 
     correlation_id = state.correlation_id or "unknown"
     log_with_context(
         logger,
         "info",
-        "Synthesis node executed",
+        "Synthesis node started",
         agent="synthesis",
         session_id=state.session_id,
         turn=state.current_turn,
         correlation_id=correlation_id,
     )
 
-    # If an RD draft already exists, leave it alone; otherwise create a
-    # minimal placeholder so downstream nodes and tests can assert on it.
-    if state.rd_draft is None:
-        draft = (
-            f"Requirements draft for project '{state.project_name}' generated at "
-            f"{datetime.utcnow().isoformat()}"
-        )
-        return state.with_updates(rd_draft=draft, rd_version=state.rd_version + 1)
+    # Delegate to the SynthesisAgent; it will populate rd_draft in the
+    # returned state_updates. We then bump rd_version to reflect a new draft.
+    agent_result = await _synthesis_agent.execute(state)
+    rd_draft = agent_result["state_updates"].get("rd_draft")
 
-    return state
+    if rd_draft is None:
+        # If, for some reason, no draft was produced, return the state
+        # unchanged so downstream nodes are not surprised.
+        return state
+
+    new_state = state.with_updates(
+        rd_draft=rd_draft,
+        rd_version=state.rd_version + 1,
+        last_agent="synthesis",
+    )
+
+    log_with_context(
+        logger,
+        "info",
+        "Synthesis node completed",
+        agent="synthesis",
+        session_id=new_state.session_id,
+        rd_version=new_state.rd_version,
+        correlation_id=correlation_id,
+    )
+
+    return new_state
 
 
 async def review_node(state: GraphState) -> GraphState:
-    """Placeholder review node.
+    """Review node that finalizes approval status.
 
-    For now this node only logs; a real implementation would coordinate
-    human-in-the-loop approval workflows.
+    If the workflow arrived here via the "auto_approve" path after
+    synthesis, ``approval_status`` will still be ``"pending"`` and this
+    node will mark the session as ``"approved"``. When resuming from a
+    human review interrupt, the API sets ``approval_status`` to either
+    ``"approved"`` or ``"revision_requested"`` and this node simply
+    logs the outcome.
     """
 
     correlation_id = state.correlation_id or "unknown"
+
+    # Auto-approve high-confidence sessions that skipped human review.
+    if state.approval_status == "pending":
+        new_state = state.with_updates(approval_status="approved")
+    else:
+        new_state = state
+
     log_with_context(
         logger,
         "info",
         "Review node executed",
         agent="review",
-        session_id=state.session_id,
-        approval_status=state.approval_status,
+        session_id=new_state.session_id,
+        approval_status=new_state.approval_status,
         correlation_id=correlation_id,
     )
 
-    return state
+    return new_state

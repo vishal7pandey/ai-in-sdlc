@@ -191,7 +191,7 @@ class RDEventModel(Base):
     )
 
 
-class AuditLogModel(AsyncAttrs, Base):
+class AuditLogModel(Base):
     __tablename__ = "audit_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)

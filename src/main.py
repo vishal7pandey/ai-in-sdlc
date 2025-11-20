@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware.error_handler import setup_exception_handlers
 from src.api.middleware.logging import logging_middleware
-from src.api.routes import auth, health, sessions
+from src.api.routes import auth, health, rd, sessions, websocket
 from src.config import settings
 from src.storage.postgres import init_database
 from src.storage.redis_cache import init_redis
@@ -56,6 +56,8 @@ setup_exception_handlers(app)
 app.include_router(health.router, tags=["System"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["Sessions"])
+app.include_router(rd.router, prefix="/api/v1/rd", tags=["Requirements Documents"])
+app.include_router(websocket.router, tags=["WebSocket"])
 
 
 @app.get("/")

@@ -20,7 +20,12 @@ from src.orchestrator.nodes import (
     synthesis_node,
     validation_node,
 )
-from src.orchestrator.routing import decide_next_step, review_router, validation_router
+from src.orchestrator.routing import (
+    decide_next_step,
+    review_router,
+    synthesis_router,
+    validation_router,
+)
 from src.schemas import GraphState
 
 
@@ -71,8 +76,16 @@ def build_graph() -> StateGraph:
     # Inference loops back to validation
     workflow.add_edge("inference", "validation")
 
-    # Synthesis goes to human_review interrupt node, then review
-    workflow.add_edge("synthesis", "human_review")
+    # After synthesis, decide whether to route through a human review
+    # interrupt or auto-approve directly via the review node.
+    workflow.add_conditional_edges(
+        "synthesis",
+        synthesis_router,
+        {
+            "human_review": "human_review",
+            "auto_approve": "review",
+        },
+    )
     workflow.add_edge("human_review", "review")
 
     # Review decides whether to end or return to conversation

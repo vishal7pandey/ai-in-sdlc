@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from importlib import import_module
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-if TYPE_CHECKING:
-    from src.schemas import RequirementItem
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from src.schemas.requirement import RequirementItem
+else:  # pragma: no cover - runtime alias to avoid circular imports
+    RequirementItem = import_module("src.schemas.requirement").RequirementItem
 
 
 class ExtractionMetadata(BaseModel):

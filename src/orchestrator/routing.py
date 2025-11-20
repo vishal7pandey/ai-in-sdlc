@@ -46,10 +46,20 @@ def decide_next_step(state: GraphState) -> str:
         user_messages = [m for m in state.chat_history if m.role == "user"]
         if user_messages:
             content = user_messages[-1].content.lower()
-            if any(
-                keyword in content
-                for keyword in ("generate", "create document", "show me", "draft")
-            ):
+            # Treat common document- or requirements-focused phrases as a
+            # signal to run extraction, even if the conversational agent did
+            # not explicitly set nextAction to "extract_requirements".
+            intent_keywords = (
+                "generate",
+                "create document",
+                "show me",
+                "draft",
+                "capture the requirements",
+                "capture requirements",
+                "extract requirements",
+                "requirements we've discussed",
+            )
+            if any(keyword in content for keyword in intent_keywords):
                 return "extract"
 
     # If we have requirements but no validation status, route to validation.
@@ -103,6 +113,27 @@ def review_router(state: GraphState) -> str:
     if approval_status == "revision_requested":
         return "revision"
     return "pending"
+
+
+def synthesis_router(state: GraphState) -> str:
+    """Route from synthesis node to human review or auto-approval.
+
+    Decision logic (Story 7):
+    - If confidence is low, or there are critical validation issues, or
+      the session is large/high value → require human review.
+    - Otherwise → auto-approve and proceed directly to the review node.
+    """
+
+    requires_review = (
+        state.confidence < 0.70
+        or any(i.get("severity") == "critical" for i in state.validation_issues)
+        or len(state.requirements) >= 10
+    )
+
+    if requires_review:
+        return "human_review"
+
+    return "auto_approve"
 
 
 def should_continue_iteration(state: GraphState) -> bool:

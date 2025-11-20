@@ -27,6 +27,23 @@ class ResponseFormatter:
         # First try to handle JSON-style outputs where the model returns a
         # structured object like {"conversational_agent_response": "..."}.
         stripped = raw_output.strip()
+
+        # If the model returned a mix of natural language text followed by a
+        # JSON block (e.g. analysis metadata), keep only the human-readable
+        # prefix so that raw JSON does not leak into the chat UI. When the
+        # output is pure JSON (starts with "{"), we keep it for structured
+        # parsing below.
+        json_start = stripped.find("{")
+        if json_start > 0:
+            candidate = stripped[json_start:]
+            try:
+                json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+            else:
+                prefix = stripped[:json_start].rstrip()
+                if prefix:
+                    stripped = prefix
         if stripped.startswith("{") and stripped.endswith("}"):
             try:
                 obj = json.loads(stripped)
@@ -39,6 +56,16 @@ class ResponseFormatter:
                 message: str | None = None
                 if isinstance(nested_response, dict):
                     message = nested_response.get("text") or nested_response.get("message")
+
+                # Support envelopes like {"conversational_agent": {"response": "..."}}.
+                source_for_meta: dict[str, Any] = obj
+                conv_agent = obj.get("conversational_agent")
+                if isinstance(conv_agent, dict):
+                    source_for_meta = conv_agent
+                    if not message:
+                        nested_msg = conv_agent.get("response") or conv_agent.get("message")
+                        if isinstance(nested_msg, str):
+                            message = nested_msg
 
                 # Fall back to common top-level keys.
                 if not message:
@@ -66,16 +93,16 @@ class ResponseFormatter:
 
                 return {
                     "message": str(message).strip(),
-                    "next_action": obj.get("next_action")
-                    or obj.get("nextAction")
+                    "next_action": source_for_meta.get("next_action")
+                    or source_for_meta.get("nextAction")
                     or "continue_eliciting",
-                    "clarifying_questions": obj.get("clarifying_questions")
-                    or obj.get("clarifyingQuestions"),
-                    "confidence": float(obj.get("confidence", 0.7)),
-                    "extracted_topics": obj.get("extracted_topics")
-                    or obj.get("extractedTopics")
+                    "clarifying_questions": source_for_meta.get("clarifying_questions")
+                    or source_for_meta.get("clarifyingQuestions"),
+                    "confidence": float(source_for_meta.get("confidence", 0.7)),
+                    "extracted_topics": source_for_meta.get("extracted_topics")
+                    or source_for_meta.get("extractedTopics")
                     or [],
-                    "sentiment": obj.get("sentiment", "neutral"),
+                    "sentiment": source_for_meta.get("sentiment", "neutral"),
                 }
 
         # Fallback: parse simple key:value block format.

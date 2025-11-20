@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TCH003
-from typing import Literal
+from importlib import import_module
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:  # pragma: no cover
+    from datetime import datetime
+else:  # pragma: no cover - runtime alias for Pydantic
+    datetime = import_module("datetime").datetime
 
 ChatRole = Literal["user", "assistant", "system"]
 

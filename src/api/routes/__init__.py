@@ -1,3 +1,3 @@
 """FastAPI route modules."""
 
-from . import auth, health, sessions  # noqa: F401
+from . import auth, health, rd, sessions, websocket  # noqa: F401

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { GraphState, Message } from '../../types/api'
-import { sendSessionMessage } from '../../lib/api/client'
+import { getSessionDetail } from '../../lib/api/client'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { useWebSocket } from '../../hooks/useWebSocket'
 
 interface ChatPanelProps {
   sessionId: string
@@ -14,11 +15,65 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [queuedMessages, setQueuedMessages] = useState<string[]>([])
-
-  const messages: Message[] = state?.chat_history ?? []
+  const [messages, setMessages] = useState<Message[]>(state?.chat_history ?? [])
+  const [streamingMessage, setStreamingMessage] = useState<Message | null>(null)
   const isOnline = useOnlineStatus()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (state?.chat_history) {
+      setMessages(state.chat_history)
+    }
+  }, [state])
+
+  const { sendChatMessage } = useWebSocket({
+    sessionId,
+    onMessageChunk: (chunk) => {
+      setError(null)
+      setIsSending(false)
+      setStreamingMessage((prev) => {
+        if (prev && prev.id === chunk.message_id) {
+          return { ...prev, content: prev.content + chunk.delta }
+        }
+        return {
+          id: chunk.message_id,
+          role: 'assistant',
+          content: chunk.delta,
+          timestamp: chunk.timestamp,
+          metadata: null,
+        }
+      })
+    },
+    onMessageComplete: (message) => {
+      setStreamingMessage(null)
+      setIsSending(false)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: message.message_id,
+          role: 'assistant',
+          content: message.full_content,
+          timestamp: message.timestamp,
+          metadata: null,
+        },
+      ])
+    },
+    onRequirementsExtracted: async (_event) => {
+      try {
+        const detail = await getSessionDetail(sessionId)
+        if (detail.state) {
+          onStateUpdate(detail.state)
+        }
+      } catch (err) {
+        console.error('Failed to refresh session after requirements extraction', err)
+      }
+    },
+    onError: (err) => {
+      setIsSending(false)
+      setError(err.error_message)
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const text = input.trim()
     if (!text || isSending) return
@@ -33,16 +88,17 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
     setIsSending(true)
     setError(null)
 
-    try {
-      const response = await sendSessionMessage(sessionId, text)
-      onStateUpdate(response.state)
-      setInput('')
-    } catch (err) {
-      console.error(err)
-      setError('Failed to send message')
-    } finally {
-      setIsSending(false)
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: text,
+      timestamp: new Date().toISOString(),
+      metadata: null,
     }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInput('')
+    sendChatMessage(text)
   }
 
   // When connection is restored, flush any queued messages sequentially.
@@ -51,15 +107,26 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
 
     let cancelled = false
 
-    const flushQueue = async () => {
+    const flushQueue = () => {
       setIsSending(true)
       setError(null)
 
       try {
         for (const text of queuedMessages) {
           if (cancelled) break
-          const response = await sendSessionMessage(sessionId, text)
-          onStateUpdate(response.state)
+          const trimmed = text.trim()
+          if (!trimmed) continue
+
+          const userMessage: Message = {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: trimmed,
+            timestamp: new Date().toISOString(),
+            metadata: null,
+          }
+
+          setMessages((prev) => [...prev, userMessage])
+          sendChatMessage(trimmed)
         }
 
         if (!cancelled) {
@@ -77,12 +144,12 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
       }
     }
 
-    void flushQueue()
+    flushQueue()
 
     return () => {
       cancelled = true
     }
-  }, [isOnline, queuedMessages, isSending, sessionId, onStateUpdate])
+  }, [isOnline, queuedMessages, isSending, sendChatMessage])
 
   return (
     <div className="h-full flex flex-col bg-slate-900">
@@ -96,7 +163,7 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
         </div>
       )}
       <div className="flex-1 overflow-auto p-4 space-y-3">
-        {messages.length === 0 && (
+        {messages.length === 0 && !streamingMessage && queuedMessages.length === 0 && (
           <p className="text-sm text-slate-500">
             Start the conversation by sending a message about your project requirements.
           </p>
@@ -107,6 +174,8 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
+              data-testid="chat-message"
+              data-role={msg.role}
               className={`max-w-[70%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
                 msg.role === 'user'
                   ? 'bg-sky-600 text-slate-50'
@@ -117,6 +186,17 @@ export function ChatPanel({ sessionId, state, onStateUpdate }: ChatPanelProps) {
             </div>
           </div>
         ))}
+
+        {streamingMessage && (
+          <div className="flex justify-start">
+            <div
+              data-testid="streaming-message"
+              className="max-w-[70%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap bg-slate-800 text-slate-100"
+            >
+              {streamingMessage.content}
+            </div>
+          </div>
+        )}
 
         {queuedMessages.map((text, index) => (
           <div key={`queued-${index}`} className="flex justify-end opacity-70">
